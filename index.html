@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 5px 10px;
+      text-align: center;
+    }
+    th {
+      background: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h2>Class Attendance</h2>
+  <button onclick="saveAttendance()">Save Attendance</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+
+  <table id="attendanceTable">
+    <thead>
+      <tr>
+        <th>Sr.</th>
+        <th>Roll Number</th>
+        <th>Present</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // Step 1: Load from localStorage OR initialize
+    let students = JSON.parse(localStorage.getItem("attendanceData")) || [];
+
+    let roll_numbers = [ 
+      801, 802, 803, 804, 805, 806, 807, 810, 
+      812, 813, 814, 815, 816, 817, 818, 
+      823, 824, 827, 829, 830, 832, 833, 834, 835, 836, 837, 838,
+      840, 841, 843, 844, 846, 847, 848, 849,
+      850, 851, 879, 882, 892, 894, 
+      2301, 2302, 2303, 2304, 2306, 2355, 2356
+    ];
+
+    if (students.length === 0) {
+      for (let counter = 0; counter < roll_numbers.length; counter++) {
+        students.push({ roll_number: roll_numbers[counter] });
+      }
+    }
+
+    // Step 2: Render table with checkboxes
+    let tbody = document.getElementById("attendanceTable").querySelector("tbody");
+    let checkboxes = []; // keep track of all checkboxes in order
+
+    for (let i = 0; i < students.length; i++) {
+      let row = document.createElement("tr");
+
+      let serialCell = document.createElement("td");
+      serialCell.textContent = i + 1;
+
+      let rollCell = document.createElement("td");
+      rollCell.textContent = students[i].roll_number;
+
+      let checkCell = document.createElement("td");
+      let checkbox = document.createElement("input");
+      checkbox.type = "checkbox"; checkbox.id = students[i].roll_number;
+      checkbox.dataset.roll = students[i].roll_number;
+      checkCell.appendChild(checkbox);
+      checkboxes.push(checkbox);
+
+      row.appendChild(serialCell);
+      row.appendChild(rollCell);
+      row.appendChild(checkCell);
+      tbody.appendChild(row);
+    }
+
+    document.getElementById("801").focus()
+
+    // Step 3: Keyboard shortcut (P = present, A = absent, then move next)
+    document.addEventListener("keydown", (e) => {
+      let active = document.activeElement;
+      if (active && active.type === "checkbox") {
+        let idx = checkboxes.indexOf(active);
+        if (idx !== -1) {
+          if (e.key.toLowerCase() === "p") {
+            active.checked = true; // mark as present
+            if (idx < checkboxes.length - 1) checkboxes[idx + 1].focus();
+          }
+          if (e.key.toLowerCase() === "a") {
+            active.checked = false; // mark as absent
+            if (idx < checkboxes.length - 1) checkboxes[idx + 1].focus();
+          }
+        }
+      }
+    });
+
+    // Step 4: Save attendance for today
+    function saveAttendance() {
+      let today = new Date();
+      let dateKey = today.toISOString().slice(0,10).replace(/-/g, ""); // e.g. 20250917
+      checkboxes.forEach(cb => {
+        let student = students.find(s => s.roll_number == cb.dataset.roll);
+        student[dateKey] = cb.checked;
+      });
+
+      // Save to localStorage
+      localStorage.setItem("attendanceData", JSON.stringify(students));
+      console.log("Attendance saved:", students);
+      alert("Attendance saved for " + dateKey);
+    }
+
+    // Step 5: Convert JSON to CSV
+    function convertToCSV(objArray) {
+      let keys = new Set();
+      objArray.forEach(item => {
+        Object.keys(item).forEach(k => keys.add(k));
+      });
+      keys = Array.from(keys);
+      let csv = keys.join(",") + "\n";
+      objArray.forEach(item => {
+        let row = keys.map(k => (item[k] !== undefined ? item[k] : "")).join(",");
+        csv += row + "\n";
+      });
+      return csv;
+    }
+
+    // Step 6: Download CSV via Blob
+    function downloadCSV() {
+      let csv = convertToCSV(students);
+      let blob = new Blob([csv], { type: "text/csv" });
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "attendance.csv";
+      link.click();
+    }
+  </script>
+</body>
+</html>
